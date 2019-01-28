@@ -25,23 +25,23 @@ display_step = 1
 
 datax = tf.placeholder(training_set[0].dtype, [None, 784])
 labely = tf.placeholder(training_label.dtype, [None, 10])
-print(training_label.dtype)
+
 training_data_set = tf.data.Dataset.from_tensor_slices((datax, labely)).batch(batch_size)
 
 iterator = training_data_set.make_initializable_iterator()
 
 # model
-_input = tf.placeholder("float", [None, 784], name='input')
-prediction = tf.placeholder("float", [None, 10], name='prediction')
+x = tf.placeholder("float", [None, 784], name='x')
+y = tf.placeholder("float", [None, 10], name='y')
 
 W = tf.Variable(tf.zeros([784, 10]), name='w')
 b = tf.Variable(tf.zeros([10]), name='b')
-activation = tf.nn.softmax(tf.matmul(_input, W) + b)
+activation = tf.nn.softmax(tf.matmul(x, W) + b)
 
-correct_prediction = tf.equal(tf.argmax(prediction, 1), tf.argmax(activation, 1))
+correct_prediction = tf.equal(tf.argmax(y,1), tf.argmax(activation,1))
 accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
 
-cross_entropy = prediction * tf.log(activation)
+cross_entropy = y * tf.log(activation)
 cost = tf.reduce_mean(-tf.reduce_sum(cross_entropy, reduction_indices=1))
 optimizer = tf.train.GradientDescentOptimizer(learning_rate).minimize(cost)
 
@@ -59,7 +59,7 @@ with tf.Session() as sess:
         while True:
             try:
                 data, label = sess.run(next)
-                sess.run(optimizer, feed_dict={_input: data, prediction: label})
+                sess.run(optimizer, feed_dict={x: data, y: label})
                 # print(sess.run(cost, feed_dict={x: data, y: label}))
                 count += 1
                 print("\rTraining epoch: {}({}/{})".format(epoch+1, count, int(len(training_set[0])/batch_size)), end="")
@@ -73,7 +73,7 @@ with tf.Session() as sess:
         while True:
             try:
                 data, label = sess.run(next)
-                a = sess.run(accuracy, feed_dict={_input: data, prediction: label})
+                a = sess.run(accuracy, feed_dict={x: data, y: label})
                 avg.append(a)
                 print("\rAccuracy: {}".format(np.mean(avg)), end="")
             except tf.errors.OutOfRangeError:

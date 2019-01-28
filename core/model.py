@@ -1,28 +1,55 @@
-import random
-
-# from tensorflow.python.client import device_lib
-# print(device_lib.list_local_devices())
-
-# Third-party libraries
+import tensorflow as tf
 import numpy as np
 
-import tensorflow as tf
 
+class Model:
+    """
+        input_layer, output_layer: {"dtype": type, "size": number}
+    """
 
-x = tf.constant(-2.0, name="x", dtype=tf.float32)
-a = tf.constant(5.0, name="a", dtype=tf.float32)
-b = tf.constant(13.0, name="b", dtype=tf.float32)
+    def __init__(self, cfg,
+                 input_layer=None,
+                 output_layer=None
+                 ):
+        if input_layer is None:
+            input_layer = {"dtype": np.float64, "size": 0},
+        if output_layer is None:
+            output_layer = {"dtype": np.float64, "size": 0}
+        # class variables
+        self.cfg = cfg
+        self.input_layer = input_layer
+        self.output_layer = output_layer
+        # dataset
+        self.input_stream = tf.placeholder(self.input_layer['dtype'], [None, self.input_layer['size']])
+        self.label_stream = tf.placeholder(self.output_layer['dtype'], [None, self.output_layer['size']])
+        training_data_set = tf.data.Dataset.from_tensor_slices((self.input_stream, self.label_stream)).batch(
+            self.cfg['batch_size'])
+        self.iterator = training_data_set.make_initializable_iterator()
+        self.next = self.iterator.get_next()
 
+        # building graph
+        self.input = tf.placeholder("float", [None, self.input_layer['size']], name='input')
+        self.prediction = tf.placeholder("float", [None, self.output_layer['size']], name='prediction')
 
-y = tf.Variable(tf.add(tf.multiply(a, x), b))
+        W = tf.Variable(tf.zeros([784, 10]), name='w')
+        b = tf.Variable(tf.zeros([10]), name='b')
+        activation = tf.nn.softmax(tf.matmul(self.input, W) + b)
 
+        correct_prediction = tf.equal(tf.argmax(self.prediction, 1), tf.argmax(activation, 1))
+        self.accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
 
-init = tf.global_variables_initializer()
+        cross_entropy = self.prediction * tf.log(activation)
+        cost = tf.reduce_mean(-tf.reduce_sum(cross_entropy, reduction_indices=1))
+        self.optimizer = tf.train.GradientDescentOptimizer(self.cfg['learning_rate']).minimize(cost)
 
+    def get_next(self, sess):
+        return sess.run(self.next)
 
-with tf.Session() as session:
-    merged = tf.summary.merge_all()
-    writer = tf.summary.FileWriter("../logs", session.graph)
+    def train(self, sess, data, label):
+        sess.run(self.optimizer, feed_dict={self.input: data, self.prediction: label})
 
-    session.run(init)
-    print(session.run(y))
+    def feed_data(self, sess, data, label):
+        sess.run(self.iterator.initializer, feed_dict={self.input_stream: data, self.label_stream: label})
+
+    def test(self, sess, data, label):
+        return sess.run(self.accuracy, feed_dict={self.input: data, self.prediction: label})
