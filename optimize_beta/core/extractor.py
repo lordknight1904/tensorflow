@@ -64,10 +64,7 @@ class Extractor:
             dataset = dataset.map(map_func=parse_func, num_parallel_calls=math.floor(os.cpu_count() / 2))
         self._dataset = dataset.prefetch(buffer_size=self.config.getint('PREFETCH_BUFFER_SIZE'))
 
-    @property
-    def dataset(self):
-        return self._dataset
-
+    # convert binary format of TFRecord into normal data
     def _deserialize_example(self, e):
         feature_description = {}
         for feature_name in self.COLUMNS:
@@ -84,7 +81,7 @@ class Extractor:
         return tf.parse_example(e, feature_description)
         # return e
 
-    # create a record
+    # create a binary serialized TFRecord
     def _serialize_example(self, row):
         example = tf.train.Example()
         # assign corresponding data type
@@ -126,14 +123,16 @@ class Extractor:
                         skip_header=True)):
                 if len(row) == 0:
                     continue
-
                 e = self._serialize_example(row)
                 content = e.SerializeToString()
                 writer.write(content)
-
             writer.close()
 
-        print("Finish Writing", output_tfrecord_files)
+        print("Finish converting ", output_tfrecord_files)
+
+    @property
+    def dataset(self):
+        return self._dataset
 
 
 if __name__ == '__main__':
