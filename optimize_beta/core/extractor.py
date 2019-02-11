@@ -24,9 +24,8 @@ class Extractor:
 
         # check input variables
         assert isinstance(files, Iterable), 'files_names must be iterable.'
-        for f in files:
-            assert 'name' in f and 'type' in f, \
-                "files_names's element must be a dict contains file's name and file's type."
+        assert all('name' in f and 'type' in f for f in files),\
+            "files_names's element must be a dict contains file's name and file's type."
         assert callable(parse_func), 'parse_func must be a function.'
 
         # import configuration
@@ -46,8 +45,7 @@ class Extractor:
 
         # creating dataset from file(s)
         files = ['{}\\{}\\{}.tfrecord'.format(self.root_dir, self.data_directory, f['name']) for f in files]
-        for f in files:
-            assert os.path.isfile(f), '{} does not exist'.format(f)
+        assert all(os.path.isfile(f) for f in files), 'Not all files exist.'
         # files = tf.data.Dataset.list_files(config.get('DATA_DIRECTORY') + files)
         dataset = tf.data.TFRecordDataset(
             files,
